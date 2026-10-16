@@ -148,9 +148,10 @@ export function createVoice(ctx, options = {}) {
   const cmdrVariant = () => (ctx.settings && ctx.settings.cmdrVoice === 'B' ? 'B' : 'A');
   const audioCtx = () => { const a = A(); return a && a.ready && a.ctx && a.ctx.state === 'running' ? a.ctx : null; };
 
-  // ── loading
+  // ── loading (fetch rejects only on network failure, never on HTTP status: retry those, a dropped connection is not a missing file)
+  const fetchRetry = (url, init, tries = 3) => fetch(url, init).catch((e) => (tries > 1 ? new Promise((res) => setTimeout(res, 900)).then(() => fetchRetry(url, init, tries - 1)) : Promise.reject(e)));
   const loadManifest = async () => {
-    try { const r = await fetch(options.manifestUrl || new URL('manifest.json', BASE), { cache: 'no-cache' }); if (r.ok) { const m = await r.json(); if (m && m.lines) manifest = m; } } catch { /* no manifest yet */ }
+    try { const r = await fetchRetry(options.manifestUrl || new URL('manifest.json', BASE), { cache: 'no-cache' }); if (r.ok) { const m = await r.json(); if (m && m.lines) manifest = m; } } catch { /* no manifest yet */ }
   };
   const loadLines = async () => {
     let L = {};
@@ -212,7 +213,7 @@ export function createVoice(ctx, options = {}) {
     if (!a || !a.ctx) { fetch(url).catch(() => {}); return Promise.resolve(null); }                            // no AudioContext yet: just warm the HTTP cache
     const hit = cacheGet(key, entry.hash); if (hit) return Promise.resolve(hit);
     if (inflight.has(key)) return inflight.get(key);
-    const p = fetch(url).then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+    const p = fetchRetry(url).then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
       .then((ab) => a.ctx.decodeAudioData(ab))
       .then((buf) => { cachePut(key, entry.hash, buf); return buf; })
       .catch((e) => { failed.add(key); console.warn(`[voice] cannot load ${entry.file}: ${e && e.message || e}`); return null; })

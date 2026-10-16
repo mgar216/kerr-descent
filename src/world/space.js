@@ -517,7 +517,8 @@ export function createWorlds(ctx, opts = {}) {
     gl.bh.uBhTex.value = cam.bhTex || gl.dummy;
     gl.bh.uBhOn.value = cam.bhTex ? 1 : 0;
     const list = [];
-    for (const b of BODIES) { const st = ST[b.id]; if (st.present && cam.skip !== b.id) list.push(st); }
+    const lk = ship.lock, skipId = cam.skip || (lk && lk.kind === 'descent' && lk.done ? lk.body : null);   // after touchdown the surface scene takes over
+    for (const b of BODIES) { const st = ST[b.id]; if (st.present && skipId !== b.id) list.push(st); }
     list.sort((a, c) => c.distRet - a.distRet);
     const prevAuto = renderer.autoClear;
     renderer.autoClear = false;
@@ -1093,7 +1094,7 @@ export function createWorlds(ctx, opts = {}) {
 
   return {
     catalog, update, renderFar, hudMarkers, destinations, target, contextAction, lockState, bodyState, nearest, collide, scan,
-    cycleSite, selectSite, skyAt, discover, reset: resetRun,
+    cycleSite, selectSite, setSite: selectSite, skyAt, discover, reset: resetRun,
     loadModels: () => Promise.all([loadModel('halcyon'), loadModel('eurydice')]),
     setQuality: (q) => { quality = q === 'fast' ? 'fast' : 'full'; },
     get busy() { return busy; },

@@ -1421,7 +1421,8 @@ function curWp() {
 }
 
 // ─────────────────────────────── guidance / autopilot ───────────────────────────────
-const AP = { ref: new Float64Array(4), D: new Float64Array(4), Ud: new Float64Array(4), A: new Float64Array(4), dir: new Float64Array(4), gu: new Float64Array(4), dist: 0, sat: false };
+const AP = { ref: new Float64Array(4), D: new Float64Array(4), Ud: new Float64Array(4), A: new Float64Array(4), dir: new Float64Array(4), gu: new Float64Array(4), dist: 0, sat: false, dock: false,
+  udPrev: new Float64Array(4), ffT: NaN, ffKey: null, ff: new Float64Array(4) };
 function guidanceAcc(target, mode, amax, out) {
   // mode: 'goto' (fly to target.pos at β ≤ target.beta) or 'hold' (match local reference observer)
   // targets with refU (worlds, stations) supply their own rest frame; targets with standoff are approached to that range
@@ -1434,17 +1435,27 @@ function guidanceAcc(target, mode, amax, out) {
     const D = [tp[0] - S[1], tp[1] - S[2], tp[2] - S[3]];
     AP.dist = Math.hypot(D[0], D[1], D[2]);
     restDir(X, s, AP.ref, D, AP.D);
+    // last 30 km to a docking port (standoff 0): critically damped (ζ = 1, τ ≈ 0.8 s) so the ship settles inside the port's
+    // velocity tolerance within seconds; everything else keeps the gentler, underdamped cruise law
+    AP.dock = target.standoff === 0 && AP.dist < 1e-4;
     if (target.standoff !== undefined) {
       const de = AP.dist - target.standoff;
-      beta = Math.sign(de) * Math.min(target.beta, Math.abs(de) * (target.approachK || 0.9));
+      beta = Math.sign(de) * Math.min(target.beta, Math.abs(de) * (AP.dock ? 0.625 : (target.approachK || 0.9)));
     } else beta = Math.min(target.beta, Math.max(target.bmin || 0, 0.08 + 0.15 * AP.dist));
-  }
+  } else AP.dock = false;
   const g = 1 / Math.sqrt(1 - beta * beta);
   for (let m = 0; m < 4; m++) AP.Ud[m] = g * (AP.ref[m] + beta * (mode === 'goto' ? AP.D[m] : 0));
   christoffel(S[1], S[2], S[3], s);
   gamUV(S, 4, S, 4, AP.gu);
-  const Tr = 1.2;
-  for (let m = 0; m < 4; m++) AP.A[m] = (AP.Ud[m] - U[m]) / Tr + AP.gu[m];
+  const Tr = AP.dock ? 0.4 : 1.2; // velocity-loop time constant; with position gain K, ζ = 1 / (2·√(K·Tr))
+  // feed-forward of the reference's own 4-acceleration (finite difference of Ud along our worldline). An orbiting body's frame
+  // accelerates at ~M/r² (≈ 4.7e-4 c/s at Halcyon); a purely proportional loop lags that by Tr·a and parks the ship
+  // Tr·a/K ≈ 190 km short of the port. Only world/station targets: mission waypoints and plain hover keep the tuned law.
+  const ffKey = target && target.refU ? `${target.id}|${AP.dock}` : null; // a gain switch is a command step, not an acceleration
+  const fdt = ship.tau - AP.ffT, useFF = ffKey !== null && ffKey === AP.ffKey && fdt > 1e-9 && fdt < 1;
+  for (let m = 0; m < 4; m++) { AP.ff[m] = useFF ? (AP.Ud[m] - AP.udPrev[m]) / fdt : 0; AP.udPrev[m] = AP.Ud[m]; }
+  AP.ffT = ship.tau; AP.ffKey = ffKey;
+  for (let m = 0; m < 4; m++) AP.A[m] = (AP.Ud[m] - U[m]) / Tr + AP.gu[m] + AP.ff[m];
   const au = gdot(X, s, AP.A, U);
   for (let m = 0; m < 4; m++) AP.A[m] += au * U[m];
   let am = Math.sqrt(Math.max(0, gdot(X, s, AP.A, AP.A)));
@@ -1651,17 +1662,23 @@ function observe() {
   obs.ur = (r * S[1] * S[5] + r * S[2] * S[6]) / pc.D + (S[3] * (r * r + a * a) * S[7]) / (r * pc.D);
   // frame dragging (ZAMO angular velocity), outside the horizon
   obs.omegaDrag = s > 0 && r > K.rp ? (pc.f * a) / (r * r + a * a) / (1 + (pc.f * a * a * sc * sc) / (r * r + a * a) ** 2) : 0;
-  // downlink from Halcyon: received tick rate dv/dτ along the ingoing principal null congruence (v = t + r)
-  obs.mcRate = MC.k * (S[4] + obs.ur); // ×k: Halcyon's clock is its own proper time
-  obs.gRx = obs.mcRate;
-  // uplink to Halcyon (outgoing principal null direction)
+  // Halcyon ⇄ ship along the radial principal null congruences: ingoing rays keep v = t + r, outgoing rays keep
+  // u = t − r − 2L(r). Inside Halcyon's orbit the downlink falls in on ingoing rays and the uplink climbs out on outgoing
+  // ones; beyond it (free flight) the roles swap. Both agree at r = rMC, so the clocks stay continuous. ×k: Halcyon's
+  // clock is its own proper time.
+  obs.mcOut = s > 0 && r > MC.rMC && ship.universe === 0;
+  const kIn = S[4] + obs.ur; // dv/dτ
+  obs.mcRate = MC.k * kIn;
   if (s > 0 && r > K.rp + 1e-6 && ship.universe === 0) {
     const ct = Math.cos(obs.th), st2 = 1 - ct * ct;
     const pr = (r * r + a * a * ct * ct - a * a * st2 + 2 * r) / Dl;
     const uph = (S[1] * S[6] - S[2] * S[5]) / Math.max(sc * sc, 1e-12) + (a * obs.ur) / (r * r + a * a);
-    obs.gTx = 1 / (MC.k * (S[4] - pr * obs.ur - a * st2 * uph));
-    obs.tRec = S[0] - r - 2 * Lfun(r) + MC.rMC + 2 * Lfun(MC.rMC);
+    const kOut = S[4] - pr * obs.ur - a * st2 * uph; // outgoing-ray frequency factor
+    if (obs.mcOut) obs.mcRate = MC.k * kOut;
+    obs.gTx = 1 / (MC.k * (obs.mcOut ? kIn : kOut));
+    obs.tRec = obs.mcOut ? S[0] + r - MC.rMC : S[0] - r - 2 * Lfun(r) + MC.rMC + 2 * Lfun(MC.rMC);
   } else { obs.gTx = 0; obs.tRec = Infinity; }
+  obs.gRx = obs.mcRate;
   ship.stats.maxGamma = Math.max(ship.stats.maxGamma, obs.gamma);
   ship.stats.maxG = Math.max(ship.stats.maxG, ship.accMag * G_PER_ACC);
   ship.stats.minR = Math.min(ship.stats.minR, Math.abs(r));
@@ -1677,6 +1694,11 @@ function mcReset() {
   Object.assign(MC, { connected: true, T: -1e9, idx: 0, tel: [], nextTel: 0, pending: [], uplinks: [], said: {}, last: null, lostSince: null, periodic: 0, periodicIdx: 0 });
   const q = K.a / Math.pow(MC.rMC, 1.5); // prograde circular orbit: dτ/dt = √(1 − 3/r + 2a r^-3/2) / (1 + a r^-3/2)
   MC.k = Math.sqrt(1 - 3 / MC.rMC + 2 * q) / (1 + q);
+}
+// Halcyon coordinate time at which the signal reaching the ship right now was sent (same null families as observe())
+function mcEmitT() {
+  const r = obs.r, t = ship.S[0];
+  return obs.mcOut ? t - r - 2 * Lfun(r) + MC.rMC + 2 * Lfun(MC.rMC) : t + r - MC.rMC;
 }
 const flags = {};
 function flagOnce(k, fn) { if (!flags[k]) { flags[k] = 1; fn(); } }
@@ -1745,7 +1767,7 @@ function mcReply(up) {
 function mcUpdate() {
   if (!MC.connected) return;
   if (ship.universe > 0) { MC.connected = false; return; }
-  const T = ship.S[0] + obs.r - MC.rMC;
+  const T = mcEmitT();
   if (T < MC.T) return;
   MC.T = T;
   while (MC.idx < MC.tel.length && MC.tel[MC.idx].tRec <= T) mcReceive(MC.tel[MC.idx++]);
@@ -2384,7 +2406,8 @@ function updatePanels() {
   $('hLink').textContent = !conn ? 'NO CARRIER' : Number.isFinite(obs.tRec) ? `LAG ${fmt(lag, 0)} s` : 'UPLINK ∞';
   const wp = curWp();
   const lk = ship.lock;
-  $('bn2').textContent = wp ? wp.name : lk ? `${lk.kind === 'landed' ? 'LANDED' : 'DOCKED'} · ${String(lk.body).toUpperCase()}` : ship.universe > 0 ? 'FREE FLIGHT · NEW UNIVERSE' : ship.sheet < 0 ? 'FREE FLIGHT · NEGATIVE UNIVERSE' : 'FREE FLIGHT';
+  const LOCK_LABEL = { descent: 'LANDING', landed: 'LANDED', ascent: 'ASCENT', docking: 'DOCKING', docked: 'DOCKED' };
+  $('bn2').textContent = wp ? wp.name : lk ? `${LOCK_LABEL[lk.kind] || String(lk.kind).toUpperCase()} · ${String(lk.body).toUpperCase()}` : ship.hover && nav.holdRef ? `HOLDING · ${String(nav.holdRef.name).toUpperCase()}` : ship.universe > 0 ? 'FREE FLIGHT · NEW UNIVERSE' : ship.sheet < 0 ? 'FREE FLIGHT · NEGATIVE UNIVERSE' : 'FREE FLIGHT';
   if (wp && wp.pos) {
     const d = Math.hypot(wp.pos[0] - S[1], wp.pos[1] - S[2], wp.pos[2] - S[3]);
     const closing = hud.lastDist !== undefined ? (hud.lastDist - d) / Math.max(hud.panelDt, 1e-3) : 0; hud.lastDist = d;
@@ -2491,7 +2514,7 @@ function setupScenario(name) {
   sim.lastRegion = obs.region;
   hud.wpKey = ''; hud.lastDist = undefined; hud.pred = [];
   $('log').innerHTML = ''; typewriter.length = 0;
-  const T0 = ship.S[0] + obs.r - MC.rMC;
+  const T0 = mcEmitT();
   if (name === 'mission') mcSchedule(T0 + 1.5, 'mission.mc.open', `light lag ${Math.round(MC.rMC - obs.r)} s`);
   else if (sc.free) mcSchedule(T0 + 5, 'free.mc.start');
   else if (!sc.dark) mcSchedule(T0 + 1.5, 'mission.mc.open.profile', `r ${obs.r.toFixed(1)} M · light lag ${Math.round(MC.rMC - obs.r)} s`);
@@ -2856,7 +2879,7 @@ function navUpdate() {
   t.refU(X, NAVU);
   const gam = Math.max(1, -gdot(X, ship.sheet, NAVU, S.subarray(4, 8)));
   const relB = Math.sqrt(1 - 1 / (gam * gam));
-  if (Math.abs(d - t.standoff) < Math.max(0.12 * t.standoff, 3e-6) && relB < 0.004) {
+  if (Math.abs(d - t.standoff) < Math.max(0.12 * t.standoff, 3e-6) && relB < 0.004 && portReady(t)) {
     ship.guide = false; ship.hover = true; nav.holdRef = t; nav.cruise = false; ship.warp = 1;
     audio.ui('wp'); toast('ARRIVED · ' + t.name + ' · HOLDING STATION');
     bus.emit('arrive', { target: t });
@@ -2867,6 +2890,12 @@ function navUpdate() {
     const want = nearHole ? 1 : far > 150 ? 60 : far > 40 ? 25 : far > 8 ? 10 : far > 1 ? 2 : 1;
     if (ship.warp !== want) ship.warp = want;
   }
+}
+// a docking port only counts as reached once the worlds module will accept the dock (its velocity tolerance is far tighter
+// than the generic arrival test), so ARRIVED and the DOCK prompt appear together
+function portReady(t) {
+  if (t.standoff !== 0 || !ctx.worlds) return true;
+  try { const a = ctx.worlds.contextAction(); return !!(a && a.body === t.id); } catch (e) { reportModuleError('worlds.contextAction', e); return true; }
 }
 function worldMarkers() {
   if (!ctx.worlds || !ctx.worlds.hudMarkers) return [];
@@ -3083,7 +3112,7 @@ async function skipTime(sec) {
     if (guard % 25 === 0) await new Promise((r) => requestAnimationFrame(r));
   }
   ship.warp = w0;
-  const T = ship.S[0] + obs.r - MC.rMC;
+  const T = mcEmitT();
   MC.pending = MC.pending.filter((p) => p.at > T); // what Halcyon said while we slept is in the log, not in our ears
   MC.idx = MC.tel.length;
   await ui.fade(false, 1400);
@@ -3136,6 +3165,13 @@ function onRoom({ space, room, name }) {
 }
 bus.on('interact', onInteract);
 bus.on('room', onRoom);
+// leaving a lock: hold station on the world we just climbed away from (a bare hover would brake to the hole's frame and let
+// the planet sail off at its orbital speed); after undocking, coast beside the station on its orbit
+bus.on('takeoff', ({ body } = {}) => {
+  const t = ctx.worlds && body ? ctx.worlds.target(body) : null;
+  nav.holdRef = t; ship.hover = !!t; ship.guide = false;
+});
+bus.on('undock', () => { nav.holdRef = null; ship.hover = false; });
 // story beats that depend on where we are and what we look at
 const _story = { negSince: null };
 function storyUpdate() {
@@ -3294,6 +3330,13 @@ async function boot() {
   bhUniforms.uSkyA.value = skies.home.texture; bhUniforms.uSkyB.value = skies.anti.texture;
   $('loadmsg').textContent = 'building Orpheus, Halcyon and the worlds of Erebus…';
   await loadModules();
+  // a dropped connection during the first load (~200 module files) leaves the game half-built: reload once; a module that is
+  // genuinely broken (syntax error, missing file) fails again and is then reported, with no reload loop
+  const store = (() => { try { return window.sessionStorage; } catch { return null; } })(); // blocked storage → no auto-reload
+  if (store && moduleErrors.some((m) => /^import .*(Failed to fetch|error loading|Importing a module script failed)/i.test(m)) && !store.getItem('orpheus.reloaded')) {
+    store.setItem('orpheus.reloaded', '1'); $('loadmsg').textContent = 'network hiccup · reloading…'; location.reload(); return;
+  }
+  if (store) store.removeItem('orpheus.reloaded');
   buildTitle();
   setupScenario('attract');
   setMode('title');
