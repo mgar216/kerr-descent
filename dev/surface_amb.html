@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>ORPHEUS · surface ambience harness</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html,body{margin:0;min-height:100%;background:#05070a;font:12px/1.35 "Segoe UI",Arial,sans-serif;color:#cfe6f5}
+  #ui{position:sticky;top:0;z-index:2;background:rgba(5,10,16,.94);padding:8px 12px;border-bottom:1px solid #1d3a4c}
+  #ui b{color:#7fe0ff} #ui select,#ui button{background:#0f2433;color:#bfe9ff;border:1px solid #2c5a73;border-radius:3px;margin:2px 3px 2px 0;padding:2px 7px;font-size:11px}
+  #ui button{cursor:pointer} #ui button:hover{background:#17405a}
+  #sliders{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:2px 14px;margin-top:6px}
+  #sliders label{display:flex;align-items:center;gap:6px} #sliders label span{width:52px;color:#8fb7cc} #sliders input{flex:1} #sliders output{width:34px;text-align:right;color:#9fe3b8;font:11px Consolas,monospace}
+  #meter{font:11px Consolas,monospace;color:#ffd27f;margin-left:8px}
+  #out{margin:0;padding:10px 12px;font:11px/1.4 Consolas,monospace;color:#9fe3b8;white-space:pre-wrap}
+</style></head>
+<body>
+<div id="ui">
+  <b>surface ambience</b>
+  <select id="biome"></select><select id="site"></select>
+  <button id="bStart">Start (live)</button><button id="bStop">Stop 2.5 s</button><button id="bDispose">Dispose</button>
+  <button id="bQuick">Smoke test</button><button id="bSuite">Level suite (this site)</button><button id="bLife">Lifecycle checks</button>
+  <span id="meter"></span>
+  <div id="sliders"></div>
+</div>
+<pre id="out"></pre>
+<script type="module" src="./surface_amb.js"></script>
+</body></html>

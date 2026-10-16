@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ORPHEUS · voice harness</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--c:#86ecff;--c2:#3fd0ff;--cd:rgba(134,236,255,.55);--cf:rgba(134,236,255,.16);--amber:#ffb04d;--red:#ff4d6a;--ok:#6cffb0;--mag:#ff6cf0;--ink:#e9fbff;
+  --mono:'Share Tech Mono',ui-monospace,Consolas,monospace;--ui:'Rajdhani','Segoe UI',system-ui,sans-serif;--disp:'Orbitron','Segoe UI',sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:radial-gradient(120% 90% at 70% 0%,#07202c 0%,#02070b 60%,#000 100%) fixed;color:var(--ink);font-family:var(--ui);font-size:14px}
+body{padding-bottom:270px}
+header{display:flex;align-items:baseline;gap:18px;padding:12px 20px;border-bottom:1px solid var(--cf)}
+h1{margin:0;font-family:var(--disp);font-size:15px;letter-spacing:.34em;color:var(--c);font-weight:700}
+header small{font-family:var(--mono);color:var(--cd);font-size:11px}
+main{display:grid;grid-template-columns:330px 1fr;gap:14px;padding:14px 20px;align-items:start}
+.panel{background:rgba(2,10,18,.6);border:1px solid var(--cf);padding:12px 14px}
+#controls{position:sticky;top:10px;max-height:calc(100vh - 290px);overflow:auto}
+.ph{font-family:var(--disp);font-size:10px;letter-spacing:.32em;color:var(--cd);margin:0 0 9px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:5px 0;font-family:var(--mono);font-size:12px}
+.row label{color:var(--cd)}
+button,select,input{font-family:var(--mono);font-size:12px;color:var(--ink);background:rgba(0,0,0,.35);border:1px solid rgba(134,236,255,.28);padding:5px 9px;border-radius:2px}
+button{cursor:pointer}button:hover{border-color:var(--c);color:#fff;background:rgba(134,236,255,.12)}
+button.go{border-color:var(--ok);color:var(--ok)}
+button.on{border-color:var(--amber);color:var(--amber)}
+input[type=range]{padding:0;width:150px;accent-color:var(--c)}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin:9px 0}
+#status{font-family:var(--mono);font-size:11.5px;line-height:1.5;color:var(--cd);white-space:pre-wrap;margin-top:8px;padding-top:8px;border-top:1px solid var(--cf)}
+#status b{color:var(--ink);font-weight:400}
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:12px}
+th{font-family:var(--disp);font-size:9px;letter-spacing:.26em;color:var(--cd);text-align:left;padding:3px 6px;font-weight:400;position:sticky;top:0;background:#04101a;z-index:1}
+td{padding:3px 6px;border-top:1px solid rgba(134,236,255,.07);vertical-align:top}td:nth-child(4){white-space:nowrap}
+tr:hover td{background:rgba(134,236,255,.06)}
+td.id{color:var(--ink);white-space:nowrap}td.tx{color:rgba(217,246,255,.62);max-width:520px}
+td.na{color:var(--red)}
+.tag{display:inline-block;font-size:9.5px;letter-spacing:.14em;padding:0 5px;border:1px solid currentColor;border-radius:2px}
+.fx-radio{color:var(--amber)}.fx-cabin{color:var(--c)}.fx-log{color:#9aa}.fx-person{color:var(--ok)}.fx-suit{color:var(--mag)}.fx-pa{color:#c9a7ff}
+#dock{position:fixed;left:0;right:0;bottom:0;height:250px;display:grid;grid-template-columns:480px 1fr;gap:14px;padding:10px 20px 14px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.7) 24%);pointer-events:none}
+#dock>*{pointer-events:auto}
+#comms{display:flex;flex-direction:column;border:1px solid var(--cf);background:rgba(2,10,18,.78);padding:9px 12px}
+#log{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:5px;mask-image:linear-gradient(180deg,transparent,#000 22%)}
+.msg{font-size:13.5px;line-height:1.3;color:#d9f6ff;transition:opacity 1.2s}
+.msg .who{font-family:var(--disp);font-size:9.5px;letter-spacing:.24em;padding:1px 6px;margin-right:7px;border:1px solid currentColor;border-radius:2px;vertical-align:1px}
+.msg.mc .who{color:var(--amber)}.msg.ai .who{color:var(--c)}.msg.sys .who{color:#9aa}.msg.me .who{color:var(--ok)}
+.msg .meta{display:block;font-family:var(--mono);font-size:10.5px;color:rgba(160,220,240,.5);margin-top:1px}
+#wave{width:100%;height:46px;margin-top:6px;background:rgba(0,0,0,.35)}
+#meter{font-family:var(--mono);font-size:10.5px;color:var(--cd);display:flex;justify-content:space-between;margin-top:3px}
+#out{border:1px solid var(--cf);background:rgba(2,10,18,.78);padding:9px 12px;font-family:var(--mono);font-size:11px;color:var(--cd);overflow:auto;white-space:pre-wrap}
+#subtitle{position:fixed;left:50%;bottom:268px;transform:translateX(-50%);max-width:min(760px,80vw);text-align:center;font-size:19px;line-height:1.35;color:#fff;text-shadow:0 0 10px #000,0 0 3px #000;opacity:0;transition:opacity .25s;pointer-events:none}
+#subtitle.show{opacity:1}#subtitle b{display:block;font-family:var(--disp);font-size:10px;letter-spacing:.3em;color:var(--c);font-weight:700;margin-bottom:3px}
+</style>
+</head>
+<body>
+<header><h1>ORPHEUS · VOICE HARNESS</h1><small id="hdr">src/voice/voice.js — runtime test bench (fake ctx, real AudioContext)</small></header>
+<main>
+  <section class="panel" id="controls">
+    <p class="ph">AUDIO ENGINE</p>
+    <div class="btns"><button id="start" class="go">START AUDIO</button><button id="stop">STOP VOICE</button><button id="dump">DUMP STATE</button></div>
+    <div class="row"><label>obs.gRx (grav. Doppler)</label><span id="gv">1.00</span></div>
+    <div class="row"><input type="range" id="grx" min="0.5" max="1.6" step="0.01" value="1" style="width:100%"></div>
+    <div class="row"><label>priority</label><select id="prio"><option>normal</option><option>low</option><option>high</option></select></div>
+    <div class="row"><label>cmdrVoice</label><select id="cmdr"><option>A</option><option>B</option></select></div>
+    <div class="row"><label>mode</label><select id="mode"><option>flight</option><option>walk</option></select></div>
+    <div class="row"><label>settings.mute</label><input type="checkbox" id="mute"></div>
+    <div class="row"><label>settings.voice (fallback)</label><input type="checkbox" id="voiceOn" checked></div>
+    <div class="row"><label>doppler</label><input type="checkbox" id="dop" checked></div>
+    <p class="ph" style="margin-top:14px">QUEUE TESTS</p>
+    <div class="btns"><button id="q3">QUEUE 3</button><button id="qlow">LOW WHILE BUSY</button><button id="qhigh">HIGH INTERRUPT</button><button id="preload">PRELOAD ALL</button><button id="calib">CALIBRATE FX (offline)</button><button id="speech">SPEECH FALLBACK</button></div>
+    <div id="status"></div>
+  </section>
+  <section class="panel">
+    <div class="row" style="margin-top:0"><p class="ph" style="margin:0">LINES</p><span><input id="filter" placeholder="filter id / who / text" style="width:230px"> <select id="whoSel"><option value="">all</option></select></span></div>
+    <table><thead><tr><th>ID</th><th>WHO</th><th>FX</th><th>DUR</th><th></th><th>TEXT</th></tr></thead><tbody id="rows"></tbody></table>
+  </section>
+</main>
+<div id="dock">
+  <div id="comms"><p class="ph" style="margin-bottom:4px">COMMS LOG <span id="logmode" style="color:var(--cd)"></span></p><div id="log"></div><canvas id="wave" width="900" height="92"></canvas><div id="meter"><span id="rms">RMS —</span><span id="clk">—</span></div></div>
+  <div id="out"></div>
+</div>
+<div id="subtitle"></div>
+<script type="module" src="./voice.js"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ORPHEUS · worlds harness</title>
+<style>
+  html, body { margin: 0; background: #000; color: #9fdcff; font: 12px/1.35 'Share Tech Mono', Consolas, monospace; overflow: hidden; }
+  #gl { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; display: block; }
+  #panel { position: fixed; left: 8px; top: 8px; background: rgba(2, 10, 18, .78); border: 1px solid rgba(134, 236, 255, .35); padding: 8px 10px; width: 330px; z-index: 5; }
+  #panel label { display: grid; grid-template-columns: 78px 1fr 62px; gap: 6px; align-items: center; margin: 3px 0; }
+  #panel select, #panel input[type=range] { width: 100%; }
+  #panel button { background: #08202e; color: #9fdcff; border: 1px solid #2c7a99; padding: 3px 7px; margin: 2px 2px 0 0; cursor: pointer; font: inherit; }
+  #info { position: fixed; right: 8px; top: 8px; max-width: 520px; background: rgba(2, 10, 18, .7); padding: 6px 9px; margin: 0; white-space: pre-wrap; z-index: 5; pointer-events: none; }
+  #log { position: fixed; left: 8px; bottom: 8px; width: 520px; max-height: 120px; overflow: hidden; background: rgba(2, 10, 18, .6); padding: 4px 8px; z-index: 5; pointer-events: none; }
+  #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .35s; z-index: 4; }
+  body.clean #panel, body.clean #info, body.clean #log { display: none; }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="fade"></div>
+<div id="panel">
+  <label>body <select id="body"></select><span></span></label>
+  <label>distance <input id="dist" type="range" min="0" max="1" step="0.001" value="0.5"><span id="distv"></span></label>
+  <label>light angle <input id="phase" type="range" min="0" max="180" step="1" value="60"><span id="phasev"></span></label>
+  <label>elevation <input id="elev" type="range" min="-85" max="85" step="1" value="15"><span id="elevv"></span></label>
+  <label>exposure <input id="exp" type="range" min="0.1" max="10" step="0.1" value="6"><span id="expv"></span></label>
+  <label>yaw <input id="yaw" type="range" min="-40" max="40" step="1" value="0"><span id="yawv"></span></label>
+  <label>fake BH <input id="bh" type="checkbox"><span></span></label>
+  <div>
+    <button id="render">render</button><button id="auto">auto: off</button><button id="clean">hide ui</button>
+    <button id="hold">hold pt</button><button id="act">action</button><button id="site">site ↻</button><button id="step">step 0.5s</button>
+  </div>
+  <div id="action"></div>
+</div>
+<pre id="info"></pre>
+<div id="log"></div>
+<script type="module" src="./worlds.js"></script>
+</body>
+</html>

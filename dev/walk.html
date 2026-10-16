@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ORPHEUS · walk / EVA / foley harness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --c:#86ecff; --c2:#3fd0ff; --cd:rgba(134,236,255,.55); --cf:rgba(134,236,255,.16);
+  --amber:#ffb04d; --red:#ff4d6a; --ok:#6cffb0; --mag:#ff6cf0; --ink:#e9fbff;
+  --mono:'Share Tech Mono',ui-monospace,Consolas,monospace; --ui:'Rajdhani','Segoe UI',system-ui,sans-serif; --disp:'Orbitron','Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#000;overflow:hidden;color:var(--c);font-family:var(--ui);user-select:none;-webkit-user-select:none}
+#gl{position:fixed;inset:0;width:100vw;height:100vh;display:block;cursor:crosshair}
+.hidden{display:none!important}
+.panel{position:absolute;padding:10px 14px 11px;background:linear-gradient(135deg,rgba(8,26,40,.72),rgba(3,10,18,.55));border:1px solid rgba(134,236,255,.20);
+  box-shadow:inset 0 0 28px rgba(40,190,255,.07),0 0 18px rgba(0,0,0,.35);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.panel::before{content:"";position:absolute;left:0;top:0;width:22px;height:2px;background:var(--c);box-shadow:0 0 8px var(--c)}
+.panel::after{content:"";position:absolute;right:0;bottom:0;width:22px;height:2px;background:var(--c);box-shadow:0 0 8px var(--c)}
+.ph{font-family:var(--disp);font-size:10px;letter-spacing:.32em;color:var(--cd);margin-bottom:6px;display:flex;justify-content:space-between;gap:16px}
+.ph b{color:var(--c);font-weight:700;letter-spacing:.2em}
+.row{display:flex;justify-content:space-between;gap:14px;line-height:1.38;font-size:12.5px;white-space:nowrap}
+.row .k{letter-spacing:.14em;color:var(--cd);font-weight:600;font-size:11px}
+.row .v{font-family:var(--mono);color:var(--ink);text-shadow:0 0 6px rgba(134,236,255,.55);font-size:13.5px}
+#status{left:14px;top:12px;width:300px}
+#help{left:14px;top:196px;width:300px;font-size:13px;line-height:1.5;color:#cdefff}
+#help kbd,#hint kbd{font-family:var(--mono);font-size:12px;padding:1px 6px;border:1px solid var(--cd);border-radius:3px;color:#fff;background:rgba(134,236,255,.08);margin:0 2px}
+#tools{right:14px;top:12px;width:352px;max-height:calc(100vh - 24px);overflow:auto;pointer-events:auto}
+#tools::-webkit-scrollbar{width:6px}#tools::-webkit-scrollbar-thumb{background:rgba(134,236,255,.3)}
+.btns{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 9px}
+.b{font-family:var(--disp);font-size:9.5px;letter-spacing:.18em;padding:6px 9px;color:var(--c);background:rgba(0,0,0,.35);border:1px solid rgba(134,236,255,.35);cursor:pointer}
+.b:hover{border-color:var(--c);color:#fff}.b.on{background:rgba(134,236,255,.2);color:#fff;border-color:var(--c)}
+.sub{font-family:var(--disp);font-size:9px;letter-spacing:.3em;color:var(--cd);margin:6px 0 4px}
+#hint{position:absolute;left:50%;bottom:62px;transform:translateX(-50%);font-family:var(--ui);font-size:16px;letter-spacing:.08em;color:#cdf6ff;text-shadow:0 0 10px rgba(0,0,0,.9),0 0 10px rgba(134,236,255,.4);text-align:center;min-width:300px;pointer-events:none}
+#sub{position:absolute;left:50%;bottom:104px;transform:translateX(-50%);font-size:16px;color:#fff;text-shadow:0 0 8px #000;max-width:720px;text-align:center;pointer-events:none}
+#log{left:14px;bottom:12px;width:430px;height:170px;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;overflow:hidden;font-family:var(--mono);font-size:11.5px;color:#bfeeff;pointer-events:none;mask-image:linear-gradient(180deg,transparent,#000 24%)}
+#log .l b{color:var(--amber);font-weight:400}#log .l i{color:var(--ok);font-style:normal}#log .l u{color:var(--mag);text-decoration:none}
+#lab{left:50%;top:12px;transform:translateX(-50%);width:min(900px,calc(100vw - 740px));max-height:calc(100vh - 24px);overflow:auto;pointer-events:auto}
+table.res{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:11px;color:#cdf2ff}
+table.res td,table.res th{padding:2px 6px;text-align:right;border-bottom:1px solid rgba(134,236,255,.10)}
+table.res td:first-child,table.res th:first-child{text-align:left}
+table.res th{color:var(--cd);font-weight:400;letter-spacing:.1em}
+table.res td.bad{color:var(--red)}table.res td.warn{color:var(--amber)}
+.sp{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.sp div{font-family:var(--mono);font-size:10px;color:var(--cd)}
+.sp canvas{width:100%;height:64px;display:block;border:1px solid rgba(134,236,255,.2);background:#000;image-rendering:pixelated}
+#tests{font-family:var(--mono);font-size:11px;line-height:1.45;color:#cdf2ff;white-space:pre-wrap}
+#tests .ok{color:var(--ok)}#tests .no{color:var(--red)}
+body.clean .panel,body.clean #log,body.clean #help{display:none}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div class="panel" id="status"><div class="ph"><span>WALK HARNESS</span><b id="sMode">—</b></div><div id="sRows"></div></div>
+<div class="panel" id="help">
+  <div class="ph"><span>CONTROLS</span><b>CLICK = LOOK</b></div>
+  <div id="helpBody"></div>
+</div>
+
+<div class="panel" id="tools">
+  <div class="ph"><span>TOOLS</span><b id="audState">AUDIO OFF</b></div>
+  <div class="sub">MODE</div>
+  <div class="btns" id="bMode"></div>
+  <div class="sub">SPAWN / TELEPORT</div>
+  <div class="btns" id="bTele"></div>
+  <div class="sub">REAL SHIP</div>
+  <div class="btns" id="bShip"></div>
+  <div class="sub">SELF TEST (PHYSICS / INTERACT / EVA)</div>
+  <div class="btns" id="bTest"></div>
+  <div id="tests"></div>
+</div>
+
+<div class="panel hidden" id="lab">
+  <div class="ph"><span>FOLEY LAB</span><b>WEB AUDIO · PROCEDURAL</b></div>
+  <div class="sub">FOOTSTEPS (×1 · WALK ×6 · LAND)</div><div class="btns" id="fSteps"></div>
+  <div class="sub">DOORS · AIRLOCK · HARNESS · UI</div><div class="btns" id="fMisc"></div>
+  <div class="sub">SUIT (LOOPS)</div><div class="btns" id="fSuit"></div>
+  <div class="btns"><button class="b" id="fAnalyse">ANALYSE ALL OFFLINE</button><button class="b" id="fSpec">SPECTROGRAMS</button></div>
+  <div id="fOut"></div>
+  <div class="sp" id="fSp"></div>
+</div>
+
+<div id="sub"></div>
+<div id="hint"></div>
+<div class="panel" id="log"></div>
+<script type="module" src="./walk.js"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ORPHEUS · UI harness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<!-- the lead adds this same <link> to index.html -->
+<link rel="stylesheet" href="../src/ui/ui.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-family: 'Rajdhani', sans-serif; color: #86ecff; user-select: none; }
+  #bg { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  #dev { position: fixed; right: 8px; top: 8px; z-index: 100; display: flex; flex-wrap: wrap; gap: 5px; max-width: 520px; justify-content: flex-end; }
+  #dev button { font: 600 11px 'Share Tech Mono', monospace; padding: 4px 8px; color: #86ecff; background: rgba(0, 0, 0, .55); border: 1px solid rgba(134, 236, 255, .35); cursor: pointer; }
+  #dev button:hover { border-color: #86ecff; color: #fff; }
+  #devlog { position: fixed; left: 8px; bottom: 8px; z-index: 100; margin: 0; max-width: 560px; max-height: 26vh; overflow: hidden; font: 11px/1.35 'Share Tech Mono', monospace; color: rgba(134, 236, 255, .7); pointer-events: none; white-space: pre-wrap; text-shadow: 0 0 4px #000; }
+  body.nobar #dev, body.nobar #devlog { display: none; }
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div id="dev"></div>
+<pre id="devlog"></pre>
+<script type="module" src="./ui.js"></script>
+</body>
+</html>

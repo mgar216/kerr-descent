@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>ORPHEUS · surface harness</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;font:12px/1.35 "Segoe UI",Arial,sans-serif;color:#cfe6f5}
+  canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:grab}
+  #ui{position:fixed;left:8px;top:8px;background:rgba(4,9,14,.74);padding:8px 10px;border:1px solid #1d3a4c;border-radius:4px;width:330px;pointer-events:auto;user-select:none}
+  #ui b{color:#7fe0ff} #ui label{display:inline-block;min-width:68px;color:#8fb5c9}
+  #ui select,#ui input[type=range]{background:#0b1a26;color:#cfe6f5;border:1px solid #28506a;vertical-align:middle}
+  #ui button{background:#0f2433;color:#bfe9ff;border:1px solid #2c5a73;border-radius:3px;margin:2px 3px 2px 0;padding:2px 7px;cursor:pointer;font-size:11px}
+  #ui button:hover{background:#17405a} #ui .row{margin:3px 0}
+  #info{position:fixed;left:8px;bottom:8px;max-width:640px;background:rgba(4,9,14,.6);padding:5px 8px;border-radius:4px;font:11px/1.35 Consolas,monospace;color:#9fe3b8;white-space:pre-wrap}
+  #prompt{position:fixed;left:50%;bottom:14%;transform:translateX(-50%);padding:6px 14px;background:rgba(4,12,18,.7);border:1px solid #2c8aa6;border-radius:4px;font-size:15px;color:#e8fbff;display:none}
+  body.clean #ui,body.clean #info{display:none}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}
+</script></head>
+<body>
+<canvas id="gl"></canvas>
+<div id="ui"></div><div id="info"></div><div id="prompt"></div>
+<script type="module" src="./surface.js"></script>
+</body></html>

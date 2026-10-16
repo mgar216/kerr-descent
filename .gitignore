@@ -1,0 +1,3 @@
+node_modules/
+# raw ElevenLabs responses (content-addressed cache for free re-processing); the processed voice/*.mp3 are committed
+voice/_raw/

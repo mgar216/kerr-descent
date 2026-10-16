@@ -1,0 +1,12 @@
+{
+  "name": "orpheus-kerr-descent",
+  "private": true,
+  "type": "module",
+  "description": "ORPHEUS — first-person descent into a Kerr black hole",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "voices": "node tools/voicegen.mjs",
+    "voices:dry": "node tools/voicegen.mjs --dry"
+  },
+  "engines": { "node": ">=18" }
+}

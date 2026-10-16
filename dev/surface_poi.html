@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>ORPHEUS · surface POI harness</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html,body{margin:0;height:100%;background:#05070a;overflow:hidden;font:12px/1.35 "Segoe UI",Arial,sans-serif;color:#cfe6f5}
+  canvas#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+  #ui{position:fixed;left:8px;top:8px;background:rgba(5,10,16,.72);padding:8px 10px;border:1px solid #1d3a4c;border-radius:4px;max-width:360px;pointer-events:auto}
+  #ui b{color:#7fe0ff} #ui button{background:#0f2433;color:#bfe9ff;border:1px solid #2c5a73;border-radius:3px;margin:2px 3px 2px 0;padding:2px 7px;cursor:pointer;font-size:11px}
+  #ui button:hover{background:#17405a}
+  #log{position:fixed;left:8px;bottom:8px;max-width:520px;background:rgba(5,10,16,.6);padding:6px 9px;border-radius:4px;white-space:pre-wrap;font:11px/1.35 Consolas,monospace;color:#9fe3b8}
+  body.clean #ui, body.clean #log{display:none}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}
+</script></head>
+<body>
+<canvas id="gl"></canvas>
+<div id="ui"></div><div id="log"></div>
+<script type="module" src="./surface_poi.js"></script>
+</body></html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ORPHEUS — Descent into a Kerr Black Hole</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --c:#86ecff; --c2:#3fd0ff; --cd:rgba(134,236,255,.55); --cf:rgba(134,236,255,.16);
+  --amber:#ffb04d; --red:#ff4d6a; --ok:#6cffb0; --mag:#ff6cf0; --ink:#e9fbff;
+  --mono:'Share Tech Mono',ui-monospace,Consolas,monospace; --ui:'Rajdhani','Segoe UI',system-ui,sans-serif; --disp:'Orbitron','Segoe UI',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#000;overflow:hidden;color:var(--c);font-family:var(--ui);user-select:none;-webkit-user-select:none}
+#gl{position:fixed;inset:0;width:100vw;height:100vh;display:block;cursor:crosshair}
+#hudc{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none}
+.hidden{display:none!important}
+#hud{position:fixed;inset:0;pointer-events:none;transition:opacity .6s}
+#hud.dim{opacity:.0}
+.panel{position:absolute;padding:10px 14px 11px;background:linear-gradient(135deg,rgba(8,26,40,.62),rgba(3,10,18,.30));border:1px solid rgba(134,236,255,.20);
+  box-shadow:inset 0 0 28px rgba(40,190,255,.07),0 0 18px rgba(0,0,0,.35);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.panel::before{content:"";position:absolute;left:0;top:0;width:22px;height:2px;background:var(--c);box-shadow:0 0 8px var(--c)}
+.panel::after{content:"";position:absolute;right:0;bottom:0;width:22px;height:2px;background:var(--c);box-shadow:0 0 8px var(--c)}
+.ph{font-family:var(--disp);font-size:10px;letter-spacing:.32em;color:var(--cd);margin-bottom:6px;display:flex;justify-content:space-between;gap:16px}
+.ph b{color:var(--c);font-weight:700;letter-spacing:.2em}
+.row{display:flex;justify-content:space-between;gap:14px;line-height:1.38;font-size:12.5px;white-space:nowrap}
+.row .k{letter-spacing:.14em;color:var(--cd);font-weight:600;font-size:11px}
+.row .v{font-family:var(--mono);color:var(--ink);text-shadow:0 0 6px rgba(134,236,255,.55);font-size:13.5px}
+.v.warn{color:var(--amber);text-shadow:0 0 8px rgba(255,176,77,.7)}
+.v.bad{color:var(--red);text-shadow:0 0 10px rgba(255,77,106,.85)}
+.v.good{color:var(--ok);text-shadow:0 0 8px rgba(108,255,176,.6)}
+.sep{height:1px;margin:5px 0;background:linear-gradient(90deg,rgba(134,236,255,.35),transparent)}
+#pFlight{left:18px;top:16px;width:300px}
+#pTime{left:18px;top:212px;width:300px}
+#pNav{right:18px;top:16px;width:318px}
+#pComms{left:18px;bottom:16px;width:470px;height:250px;display:flex;flex-direction:column}
+#log{flex:1;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;gap:5px;mask-image:linear-gradient(180deg,transparent,#000 22%)}
+.msg{font-size:13.5px;line-height:1.3;color:#d9f6ff;transition:opacity 1.2s}
+.msg .who{font-family:var(--disp);font-size:9.5px;letter-spacing:.24em;padding:1px 6px;margin-right:7px;border:1px solid currentColor;border-radius:2px;vertical-align:1px}
+.msg.mc .who{color:var(--amber)} .msg.ai .who{color:var(--c)} .msg.sys .who{color:#9aa}
+.msg.me .who{color:var(--ok)}
+.msg .meta{display:block;font-family:var(--mono);font-size:10.5px;color:rgba(160,220,240,.5);margin-top:1px}
+.msg.old{opacity:.45}
+#wave{width:100%;height:30px;margin-top:4px;opacity:.9}
+#commsFoot{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--cd);margin-top:3px}
+#banner{position:absolute;left:50%;top:14px;transform:translateX(-50%);text-align:center;min-width:420px}
+#banner .t1{font-family:var(--disp);font-size:11px;letter-spacing:.42em;color:var(--cd)}
+#banner .t2{font-family:var(--disp);font-size:21px;font-weight:700;letter-spacing:.2em;color:var(--ink);text-shadow:0 0 14px rgba(134,236,255,.75);margin-top:3px}
+#banner .t3{font-family:var(--mono);font-size:13px;color:var(--c);margin-top:2px}
+#alerts{position:absolute;left:50%;top:96px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:5px}
+.alert{font-family:var(--disp);font-size:12px;letter-spacing:.3em;padding:4px 14px;border:1px solid var(--amber);color:var(--amber);background:rgba(40,20,0,.35);text-shadow:0 0 8px rgba(255,176,77,.8);animation:blink 1s steps(2) infinite}
+.alert.red{border-color:var(--red);color:var(--red);background:rgba(50,0,10,.4)}
+.alert.info{border-color:var(--c);color:var(--c);background:rgba(0,30,40,.35);animation:none}
+@keyframes blink{50%{opacity:.35}}
+#wpstrip{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:6px;align-items:center}
+.wp{font-family:var(--disp);font-size:9.5px;letter-spacing:.16em;padding:5px 9px;border:1px solid rgba(134,236,255,.25);color:rgba(134,236,255,.5);background:rgba(2,12,20,.45);white-space:nowrap}
+.wp.done{color:var(--ok);border-color:rgba(108,255,176,.45)}
+.wp.cur{color:#fff;border-color:var(--mag);box-shadow:0 0 12px rgba(255,108,240,.45);text-shadow:0 0 8px var(--mag)}
+#hud.walk #pFlight,#hud.walk #pTime,#hud.walk #pNav,#hud.walk #pComms,#hud.walk #wpstrip,#hud.free #wpstrip{display:none}
+#hud.walk #banner{top:10px;transform:translateX(-50%) scale(.82)}
+.gorow{display:flex;gap:16px;align-items:center}
+.btn.alt{background:linear-gradient(180deg,#ffe2b8,#ffb04d);box-shadow:0 0 34px rgba(255,176,77,.45),inset 0 -3px 0 rgba(0,0,0,.25)}
+#hint{position:absolute;left:50%;bottom:62px;transform:translateX(-50%);font-family:var(--ui);font-size:15px;letter-spacing:.08em;color:#cdf6ff;text-shadow:0 0 10px rgba(0,0,0,.9),0 0 10px rgba(134,236,255,.4);text-align:center;transition:opacity .5s;width:min(560px,calc(100vw - 1060px));min-width:360px}
+#hint kbd,.help kbd,#commsMenu kbd{font-family:var(--mono);font-size:12px;padding:1px 6px;border:1px solid var(--cd);border-radius:3px;color:#fff;background:rgba(134,236,255,.08);margin:0 2px}
+#cine{position:fixed;left:0;right:0;top:38%;text-align:center;pointer-events:none;opacity:0;transition:opacity 1.2s}
+#cine .a{font-family:var(--disp);font-weight:900;font-size:min(6.2vw,64px);letter-spacing:.32em;color:#fff;text-shadow:0 0 30px rgba(134,236,255,.9),0 0 80px rgba(80,180,255,.6)}
+#cine .b{font-family:var(--ui);font-size:min(2.2vw,21px);letter-spacing:.32em;color:var(--c);margin-top:10px;text-shadow:0 0 12px rgba(0,0,0,.9)}
+#cine.red .a{text-shadow:0 0 30px rgba(255,77,106,.95),0 0 90px rgba(255,40,60,.6)}
+#cine.show{opacity:1}
+/* title */
+#title{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6vh 0 9vh;background:radial-gradient(ellipse 60% 42% at 50% 50%,rgba(0,0,0,0) 0%,rgba(0,0,0,.25) 60%,rgba(0,0,0,.8) 100%),linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,0) 30%,rgba(0,0,0,0) 62%,rgba(0,0,0,.7));z-index:10;transition:opacity 1.4s}
+#title .ttop,#title .tbot{display:flex;flex-direction:column;align-items:center}
+#title.fade{opacity:0;pointer-events:none}
+#title h1{margin:0;font-family:var(--disp);font-weight:900;font-size:min(9vw,104px);letter-spacing:.42em;padding-left:.42em;color:transparent;background:linear-gradient(180deg,#fff 0%,#c8f6ff 45%,#58c8ff 100%);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 0 26px rgba(90,200,255,.55))}
+#title .sub{font-family:var(--disp);font-size:min(2.1vw,17px);letter-spacing:.55em;color:var(--c);margin-top:4px;padding-left:.55em}
+#title .tag{font-size:17px;letter-spacing:.12em;color:#bfeeff;opacity:.85;margin:14px 0 0;font-style:italic}
+.opts{display:flex;gap:26px;flex-wrap:wrap;justify-content:center;margin-bottom:24px;background:rgba(2,10,18,.55);border:1px solid rgba(134,236,255,.16);padding:14px 22px}
+.opt{display:flex;flex-direction:column;gap:7px;align-items:flex-start}
+.opt .ol{font-family:var(--disp);font-size:9.5px;letter-spacing:.3em;color:var(--cd)}
+.chips{display:flex;gap:4px}
+.chip{font-family:var(--mono);font-size:12.5px;padding:5px 9px;border:1px solid rgba(134,236,255,.28);color:#bfefff;cursor:pointer;background:rgba(0,0,0,.25)}
+.chip:hover{border-color:var(--c);color:#fff}
+.chip.on{border-color:var(--c);background:rgba(134,236,255,.16);color:#fff;box-shadow:0 0 12px rgba(134,236,255,.35)}
+.btn{font-family:var(--disp);font-weight:700;font-size:17px;letter-spacing:.42em;padding:15px 38px 15px 44px;color:#001018;background:linear-gradient(180deg,#bff5ff,#56cfff);border:none;cursor:pointer;box-shadow:0 0 34px rgba(86,207,255,.6),inset 0 -3px 0 rgba(0,0,0,.25);clip-path:polygon(12px 0,100% 0,calc(100% - 12px) 100%,0 100%)}
+.btn:hover{filter:brightness(1.12);box-shadow:0 0 50px rgba(86,207,255,.9)}
+.btn:disabled{filter:grayscale(1) brightness(.6);cursor:wait}
+.btn2{font-family:var(--disp);font-size:11px;letter-spacing:.3em;padding:9px 16px;color:var(--c);background:rgba(0,0,0,.35);border:1px solid rgba(134,236,255,.35);cursor:pointer}
+.btn2:hover{border-color:var(--c);color:#fff}
+#jumps{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:900px;margin-top:16px}
+#loadmsg{font-family:var(--mono);font-size:12px;color:var(--cd);margin-top:14px;height:16px}
+#title .foot{position:absolute;bottom:16px;font-family:var(--mono);font-size:11px;color:rgba(134,236,255,.45);text-align:center;letter-spacing:.06em;padding:0 20px}
+.overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,4,8,.72);z-index:20}
+.box{background:linear-gradient(135deg,rgba(8,26,40,.92),rgba(3,10,18,.88));border:1px solid rgba(134,236,255,.3);padding:22px 30px;max-width:900px;box-shadow:0 0 60px rgba(40,190,255,.15)}
+.box h2{font-family:var(--disp);letter-spacing:.32em;font-size:16px;margin:0 0 14px;color:#fff}
+.help{display:grid;grid-template-columns:1fr 1fr;gap:4px 34px;font-size:14.5px;color:#d5f5ff}
+.help div{display:flex;justify-content:space-between;gap:18px;border-bottom:1px solid rgba(134,236,255,.08);padding:3px 0}
+.help .hd{grid-column:1/-1;font-family:var(--disp);font-size:10px;letter-spacing:.3em;color:var(--cd);border:none;margin-top:8px}
+#commsMenu{position:fixed;left:500px;bottom:16px;z-index:5;pointer-events:none}
+#commsMenu .box{padding:14px 18px;min-width:330px}
+#commsMenu .it{font-size:15px;padding:4px 0;color:#d8f7ff}
+#ending .box{text-align:center;max-width:720px}
+#ending .big{font-family:var(--disp);font-weight:900;font-size:40px;letter-spacing:.3em;color:#fff;text-shadow:0 0 30px rgba(134,236,255,.8);margin:6px 0 12px}
+#ending p{font-size:16px;line-height:1.55;color:#cdefff}
+#stats{display:grid;grid-template-columns:1fr 1fr;gap:4px 30px;text-align:left;margin:14px auto;max-width:520px;font-size:14px}
+#stats .v{font-family:var(--mono);color:#fff;text-align:right}
+#fatal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;color:#ff8a9a;font-family:var(--mono);padding:40px;z-index:99;white-space:pre-wrap;text-align:center}
+#fps{position:fixed;right:20px;bottom:6px;font-family:var(--mono);font-size:10px;color:rgba(134,236,255,.35);pointer-events:none}
+</style>
+<link rel="stylesheet" href="./src/ui/ui.css">
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}
+</script>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="hudc"></canvas>
+<div id="hud" class="hidden">
+  <div class="panel" id="pFlight"><div class="ph"><span>FLIGHT</span><b id="hMode">MANUAL</b></div><div id="rFlight"></div></div>
+  <div class="panel" id="pTime"><div class="ph"><span>CHRONOMETRY</span><b id="hClock">τ</b></div><div id="rTime"></div></div>
+  <div class="panel" id="pNav"><div class="ph"><span>NAVIGATION</span><b id="hRegion">EXTERIOR</b></div><div id="rNav"></div></div>
+  <div class="panel" id="pComms"><div class="ph"><span>COMMS · HALCYON / LYRA</span><b id="hLink">LINK</b></div><div id="log"></div><canvas id="wave" width="440" height="30"></canvas><div id="commsFoot"><span id="cfL">[C] OPEN CHANNEL</span><span id="cfR"></span></div></div>
+  <div id="banner"><div class="t1" id="bn1">MISSION ORPHEUS · DESCENT PROFILE</div><div class="t2" id="bn2">—</div><div class="t3" id="bn3"></div></div>
+  <div id="alerts"></div>
+  <div id="wpstrip"></div>
+  <div id="hint"></div>
+</div>
+<div id="cine"><div class="a" id="cineA"></div><div class="b" id="cineB"></div></div>
+<div id="commsMenu" class="hidden"><div class="box"><h2>OPEN CHANNEL → HALCYON</h2>
+  <div class="it"><kbd>1</kbd> Status report</div>
+  <div class="it"><kbd>2</kbd> Request go / no-go</div>
+  <div class="it"><kbd>3</kbd> Personal message home</div>
+  <div class="it"><kbd>4</kbd> "What do you see from there?"</div>
+  <div class="it" style="opacity:.6;margin-top:6px"><kbd>C</kbd> / <kbd>Esc</kbd> close</div></div></div>
+<div id="help" class="overlay hidden"><div class="box"><h2>FLIGHT MANUAL — ORPHEUS</h2><div class="help" id="helpGrid"></div>
+  <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;opacity:.7">Click the view to capture the mouse. <kbd>Esc</kbd> releases it.</span><button class="btn2" id="helpClose">CLOSE [H]</button></div></div></div>
+<div id="pause" class="overlay hidden"><div class="box" style="text-align:center"><h2>PAUSED</h2>
+  <div class="opts" style="margin:8px 0 16px" id="pauseOpts"></div>
+  <div style="display:flex;gap:10px;justify-content:center"><button class="btn2" id="resume">RESUME [P]</button><button class="btn2" id="toTitle">MAIN MENU</button></div></div></div>
+<div id="ending" class="overlay hidden"><div class="box"><div style="font-family:var(--disp);letter-spacing:.4em;font-size:11px;color:var(--cd)" id="endKicker">MISSION COMPLETE</div><div class="big" id="endTitle">THE OTHER SIDE</div><p id="endText"></p><div id="stats"></div><button class="btn2" id="endGo">CONTINUE EXPLORING</button></div></div>
+<div id="title">
+  <div class="ttop">
+    <h1>ORPHEUS</h1>
+    <div class="sub">A DESCENT INTO A ROTATING BLACK HOLE</div>
+    <div class="tag">Indestructible ship. Exact Kerr geodesics. No way back.</div>
+  </div>
+  <div class="tbot">
+    <div class="opts" id="titleOpts"></div>
+    <div class="gorow"><button class="btn" id="go" disabled>BEGIN DESCENT</button><button class="btn alt" id="goFree" disabled>FREE EXPLORE</button></div>
+    <div id="loadmsg">initialising…</div>
+    <script>if (location.protocol === 'file:') document.getElementById('loadmsg').textContent = 'ES modules need a web server: run npm start, then open http://localhost:5173';</script>
+    <div id="jumps"></div>
+  </div>
+  <div class="foot">Kerr–Schild Hamiltonian ray tracing · horizon-penetrating camera · Novikov–Thorne disk · relativistic Doppler, beaming &amp; aberration · light-travel-time comms · walkable ship · worlds of Erebus · through the ring singularity<br>Best in Chrome / Edge on a desktop GPU · keyboard + mouse or gamepad · headphones recommended · <span style="color:var(--c)">H</span> for controls</div>
+</div>
+<div id="fatal" class="hidden"></div>
+<div id="fps"></div>
+<script type="module" src="./src/core.js"></script>
+<script>
+setTimeout(function () { if (!window.__orpheusBooted) { var f = document.getElementById('fatal'); f.textContent = 'Could not load three.js from the CDN.\nThis simulator needs an internet connection the first time it loads.'; f.classList.remove('hidden'); } }, 20000);
+</script>
+</body>
+</html>
