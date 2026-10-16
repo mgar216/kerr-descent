@@ -1479,8 +1479,9 @@ function controlAcc(out) {
   out[0] = out[1] = out[2] = 0;
   if (ship.guide && wp) return guidanceAcc(wp, 'goto', wp.amax || 2.0, out);
   if (ship.hover || input.brake) {
-    if (ship.sheet > 0 && obs.r <= K.rp + 0.01) { ship.hover = false; flagOnce('hoverfail', () => lyra(null, 'mission.lyra.hoverfail')); return 0; }
-    const hr = nav.holdRef;
+    if (ship.sheet > 0 && obs.r <= K.rp + 0.01) { holdOff(); flagOnce('hoverfail', () => lyra(null, 'mission.lyra.hoverfail')); return 0; }
+    // only station-keeping (arrival / take-off) holds on a body; Space just matches the local frame and must never fly anywhere
+    const hr = ship.hover ? nav.holdRef : null;
     if (hr && hr.standoff !== undefined && (hr.sheet || 1) === ship.sheet) return guidanceAcc(hr, 'goto', 2.0 * (ship.boost ? 2 : 1), out);
     return guidanceAcc(null, 'hold', 2.0 * (ship.boost ? 2 : 1), out);
   }
@@ -1799,20 +1800,31 @@ const keys = new Set();
 const SAS_MODES = ['OFF', 'STAB', 'PRO', 'RETRO', 'TGT', 'RAD-IN', 'RAD-OUT'];
 function toast(text) { const h = $('hint'); h.innerHTML = text; h.style.opacity = 1; hints.until = performance.now() + 2600; }
 function guideOff(why) { if (ship.guide) { ship.guide = false; toast(`GUIDANCE OFF · ${why}`); audio.ui('deny'); } }
+// station-keeping on a body (nav.holdRef) lives exactly as long as ship.hover: a leftover reference would make the next
+// hold fly the ship straight back to wherever it last arrived
+function holdOff(why) {
+  nav.holdRef = null;
+  if (!ship.hover) return;
+  ship.hover = false;
+  if (why) { toast(`STATION-KEEPING OFF · ${why}`); audio.ui('select'); }
+}
 function toggleGuide() {
   if (!curWp()) { toast(sim.scenario === 'free' ? 'NO TARGET · <kbd>T</kbd> PICK ONE · <kbd>J</kbd> NAV COMPUTER' : 'NO ACTIVE WAYPOINT'); return; }
-  ship.guide = !ship.guide; ship.hover = false;
+  ship.guide = !ship.guide; holdOff();
   if (ship.guide) { ship.sas = 'TGT'; audio.ui('confirm'); flagOnce('guide1', () => lyra(null, 'mission.lyra.guide')); toast('GUIDANCE ENGAGED → ' + curWp().name); }
   else toast('GUIDANCE DISENGAGED');
 }
 function toggleHover() {
-  ship.hover = !ship.hover; ship.guide = false;
-  toast(ship.hover ? 'STATION-KEEPING: MATCH LOCAL FRAME' : 'STATION-KEEPING OFF'); audio.ui(ship.hover ? 'confirm' : 'select');
+  ship.guide = false;
+  if (ship.hover) { holdOff(); toast('STATION-KEEPING OFF'); audio.ui('select'); return; }
+  ship.hover = true; nav.holdRef = null;
+  toast('STATION-KEEPING: MATCH LOCAL FRAME'); audio.ui('confirm');
 }
 function cycleTarget(d) {
   if (sim.scenario === 'free') { // every reachable destination: worlds, stations, then Erebus features
     const ids = [];
-    if (ctx.worlds) { try { for (const x of ctx.worlds.destinations()) if (x.reachable && x.discovered && !(ship.lock && ship.lock.body === x.id)) ids.push(x.id); } catch (e) { reportModuleError('worlds.destinations', e); } }
+    // skip the body we are locked to or sitting next to (< 0.01 M ≈ 3,000 km, e.g. just undocked): T must not aim us straight back
+    if (ctx.worlds) { try { for (const x of ctx.worlds.destinations()) if (x.reachable && x.discovered && !(ship.lock && ship.lock.body === x.id) && !(x.dist < 0.01)) ids.push(x.id); } catch (e) { reportModuleError('worlds.destinations', e); } }
     for (const f of navFeatures()) if (f.reachable && !f.done) ids.push(f.id);
     if (!ids.length) return;
     const cur = nav.target ? ids.indexOf(nav.target.id) : -1;
@@ -1902,7 +1914,7 @@ function pollGamepad(dt) {
   const b = (i) => gp.buttons[i] && gp.buttons[i].pressed, bv = (i) => (gp.buttons[i] ? gp.buttons[i].value : 0);
   input.gp = { yaw: dz(gp.axes[0] || 0), pitch: -dz(gp.axes[1] || 0) * (settings.invertY ? -1 : 1), roll: dz(gp.axes[2] || 0), lift: -dz(gp.axes[3] || 0) };
   const thr = bv(7) - bv(6);
-  if (Math.abs(thr) > 0.05) { ship.throttle = clamp(ship.throttle + thr * dt * 0.7, 0, 1); guideOff('MANUAL THROTTLE'); }
+  if (Math.abs(thr) > 0.05) { ship.throttle = clamp(ship.throttle + thr * dt * 0.7, 0, 1); guideOff('MANUAL THROTTLE'); holdOff('MANUAL THROTTLE'); }
   const edge = (i) => b(i) && !input.gpPrev[i];
   if (edge(0)) toggleGuide(); if (edge(1)) (input.commsOpen ? closeComms() : openComms()); if (edge(2)) setSAS('STAB'); if (edge(3)) cycleTarget(1);
   if (edge(12)) warpStep(1); if (edge(13)) warpStep(-1); if (edge(9)) togglePause(); if (edge(8)) toggleHelp();
@@ -1968,12 +1980,12 @@ function updateAttitude(dt, pilot = true) {
   // throttle & translation
   if (!pilot) { ship.boost = false; input.brake = false; ship.strafe[0] = ship.strafe[1] = 0; return; }
   const dthr = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
-  if (dthr) { ship.throttle = clamp(ship.throttle + dthr * dt * 0.55, 0, 1); guideOff('MANUAL THROTTLE'); }
+  if (dthr) { ship.throttle = clamp(ship.throttle + dthr * dt * 0.55, 0, 1); guideOff('MANUAL THROTTLE'); holdOff('MANUAL THROTTLE'); }
   ship.boost = keys.has('ShiftLeft') || keys.has('ShiftRight') || !!input.gpBoost;
   input.brake = keys.has('Space');
   ship.strafe[0] = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0) + (input.gpStrafe || 0);
   ship.strafe[1] = (keys.has('KeyR') ? 1 : 0) - (keys.has('KeyF') ? 1 : 0) + (input.gp ? input.gp.lift : 0);
-  if ((ship.strafe[0] || ship.strafe[1]) && ship.guide) guideOff('MANUAL TRANSLATION');
+  if (ship.strafe[0] || ship.strafe[1]) { guideOff('MANUAL TRANSLATION'); holdOff('MANUAL TRANSLATION'); }
 }
 
 // ─────────────────────────────── trajectory prediction ───────────────────────────────
@@ -2864,7 +2876,8 @@ function setTarget(id) {
 }
 function clearNav(silent) {
   const had = !!nav.target;
-  nav.target = null; nav.holdRef = null; nav.cruise = false;
+  nav.target = null; nav.cruise = false;
+  if (nav.holdRef) holdOff(); // coast on with the body's velocity instead of braking to the hole's frame
   if (ship.guide) ship.guide = false;
   if (ship.warp > 1) ship.warp = 1;
   if (had && !silent) say('nav.cancel');

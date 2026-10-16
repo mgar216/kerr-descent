@@ -220,7 +220,9 @@ export function createNavComputer(ctx, opts = {}) {
     if (sheet !== st.sheet) { st.sheet = sheet; setTab(sheet < 0 ? 'anti' : 'sys', false); }   // follow the ship across the ring
 
     if (!st.sel || !st.byId.has(st.sel) || !visible(st.byId.get(st.sel))) {
-      const pick = (st.cur && st.byId.get(st.cur.id)) || rows.find((r) => visible(r) && canNav(r)) || rows.find(visible);
+      // never pre-select the body you are sitting next to (< 0.01 M ≈ 3,000 km): right after undocking, Enter would fly you back
+      const away = (r) => !(r.dist < 0.01);
+      const pick = (st.cur && st.byId.get(st.cur.id)) || rows.find((r) => visible(r) && canNav(r) && away(r)) || rows.find((r) => visible(r) && canNav(r)) || rows.find(visible);
       st.sel = pick ? pick.id : null;
     }
     renderList(force);
